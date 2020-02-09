@@ -6,14 +6,15 @@ Version = "1.1.0"
 
 ''' 
 Notes:
-    Currently only works with top 50 runners.  For some weird reason code can't pull back past runner...58 or so, so 50 to be safe.
-    Please make sure the name on like 18 matches your speedrun.com username
-    Cooldown on line 16 is in seconds.
+    Cooldowns on lines 16 and 17 are in seconds.
+    Line 16 is the command cooldown
+    Line 17 is the individual user cooldown
     Match Category in Twitch Title to the Tab in hte main board. :) (Any% | World Peace | All Red Berries | 70 Star etc.
 '''
 
 commandName = "!wr"     #String to start the command
 cooldown = 1            #Cooldown of the command in seconds
+userCooldown = 1
 
 import datetime         #For converting time from a number of seconds to a human readable format (1:23:45.67)
 import json             #For quickly / easily parsing data from speedrun.com/
@@ -26,8 +27,8 @@ def Init():
 
 
 def Execute(data):
-    if data.GetParam(0) != commandName or Parent.IsOnCooldown(ScriptName, commandName) or not Parent.IsLive():
-        #If we're not called with our command name, or we're on cooldown, quit.
+    if data.GetParam(0) != commandName or Parent.IsOnCooldown(ScriptName, commandName) or not Parent.IsLive() or Parent.IsOnUserCooldown(ScriptName, commandName, data.User):
+        #If we're not called with our command name, or we're on cooldown, or the user who called it is on cooldown, quit.
         #Parent.Log("!wr", "The game is {}".format(game))
         return
     else:
@@ -53,6 +54,7 @@ def Execute(data):
         Parent.Log("!wr", str(type(WRrun)))
         runner_name = getRunnerName(WRrun['players'][0]['id'])
         Time = WRrun['times']['primary_t']
+        Parent.Log("!wr", str(type(Time)))
         TimeParsed = datetime.timedelta(seconds=Time)
         TimeString = str(TimeParsed)
         while TimeString[0] == '0' or TimeString[0] == ':':
@@ -60,6 +62,7 @@ def Execute(data):
         if '.' in TimeString:
             TimeString = TimeString[0:TimeString.index('.')+4] # Cut the time down to 3 decimal places at most
         send_message("The WR in {} {} is {} held by {}.".format(game, category, TimeString, runner_name))
+        Parent.AddUserCooldown(ScriptName, commandName, data.User, userCooldown)
 	return
 
 
@@ -77,8 +80,35 @@ def SpeedrunGame(TwitchGameName):
         return "celeste"
     elif TwitchGameName == "Super Mario Sunshine":
         return "sms"
+    elif TwitchGameName == "The Legend of Zelda: Breath of the Wild":
+        return "botw"
+    elif TwitchGameName == "Super Mario Bros.":
+        return "smb1"
+    elif TwitchGameName == "Super Mario Bros.: The Lost Levels":
+        return "smbtll"
+    elif TwitchGameName == "Super Mario Bros. 2":
+        return "smb2"
+    elif TwitchGameName == "Super Mario Bros. 3":
+        return "smb3"
+    elif TwitchGameName == "Super Mario World":
+        return "smw"
+    elif TwitchGameName == "Super Mario Galaxy":
+        return "smg1"
+    elif TwitchGameName == "Super Mario Galaxy 2":
+        return "smg2"
+    elif TwitchGameName == "New Super Mario Bros.":
+        return "nsmb"
+    elif TwitchGameName == "New Super Mario Bros. 2":
+        return "nsmb2"
+    elif TwitchGameName == "New Super Mario Bros. U":
+        return "nsmbu"
+    elif TwitchGameName == "New Super Mario Bros. Wii":
+        return "nsmbw"
+    elif TwitchGameName == "Super Mario 3D World":
+        return "sm3dw"
     elif TwitchGameName == "Yu-Gi-Oh! Forbidden Memories":
         return "yugiohfm"
+        
 
 def CategoryExtensions(TwitchGameName):
     #TwitchGameName is the Game according to Twitch
@@ -90,6 +120,26 @@ def CategoryExtensions(TwitchGameName):
         return "celeste_category_extensions"
     elif TwitchGameName == "Super Mario Sunshine":
         return "smsce"
+    elif TwitchGameName == "The Legend of Zelda: Breath of the Wild":
+        return "botw-extension"
+    elif TwitchGameName == "Super Mario Bros.":
+        return "smbce"
+    elif TwitchGameName == "Super Mario Bros.: The Lost Levels":
+        return "smbtllce"
+    elif TwitchGameName == "Super Mario Bros. 2":
+        return "smb2ce"
+    elif TwitchGameName == "Super Mario Bros. 3":
+        return "smb3ce"
+    elif TwitchGameName == "Super Mario World":
+        return "smwext"
+    elif TwitchGameName == "New Super Mario Bros.":
+        return "nsmbce"
+    elif TwitchGameName == "New Super Mario Bros. 2":
+        return "nsmb2memes"
+    elif TwitchGameName == "New Super Mario Bros. Wii":
+        return "nsmbwce"
+    elif TwitchGameName == "Super Mario 3D World":
+        return "sm3dw"
     elif TwitchGameName == "Yu-Gi-Oh! Forbidden Memories":
         return "yugiohfmextensions"
 
@@ -131,6 +181,7 @@ def getCategories(game, TwitchTitle):
     #Uses the speedrun API to get a list of category names for the game being run
     #This functions returns a link to the leaderboard page, and the name of the category to print later...
     #Debating returning the blob
+    categories = {}     # Category : Records Page
     Parent.Log("!wr", "Getting list of category names from speedrun.com.")
     CategoryPage = Parent.GetRequest("https://speedrun.com/api/v1/games/{}/categories".format(game), {})
     CategoryPage = json.loads(CategoryPage)
@@ -142,7 +193,10 @@ def getCategories(game, TwitchTitle):
             if each['name'].upper() in TwitchTitleUpper:
                 for link in each['links']:
                     if link['rel'] == "records":
-                        return link['uri'], each['name']
+                        categories[each['name']] = link['uri']
+        LongestMatch = max(categories.keys(),key=len)
+        return categories[LongestMatch], LongestMatch
+            
     else:   #Failed to load the categories page for the game
         Parent.Log("!wr", "{} has no categories page.".format(game))
         return -2, -2
