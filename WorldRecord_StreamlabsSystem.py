@@ -57,6 +57,8 @@ def Execute(data):
         TimeString = str(TimeParsed)
         while TimeString[0] == '0' or TimeString[0] == ':':
             TimeString = TimeString[1::]
+        if '.' in TimeString:
+            TimeString = TimeString[0:TimeString.index('.')+4] # Cut the time down to 3 decimal places at most
         send_message("The WR in {} {} is {} held by {}.".format(game, category, TimeString, runner_name))
 	return
 
