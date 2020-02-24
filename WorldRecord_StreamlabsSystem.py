@@ -2,7 +2,7 @@ ScriptName = "WR"
 Website = "https://speedrun.com/"
 Description = "Pulls the World Record for a Category when called with 'commandName Category'" #See Line 15
 Creator = "AuroTheAzure"
-Version = "1.1.0"
+Version = "1.1.1"
 
 ''' 
 Notes:
@@ -39,11 +39,8 @@ def Execute(data):
         gameURL = SpeedrunGame(game)
         url, category = getCategories(gameURL, title)
         if url == -5 and category == -5:            # This means the category wasn't found in the twitch title
-            gameURL = CategoryExtensions(game)
-            url, category = getCategories(gameURL, title)
-            if url == -5 and category == -5:
-                send_message("I couldn't find any categories in the stream title.")
-                return
+            send_message("I couldn't find any categories in the stream title.")
+            return
         elif url == -2 and category == -2:          # This means the category page failed to load.
             send_message("Contact the creator, because your game is not currently supported.") #Gotta get more work somehow :)
             return
@@ -72,76 +69,45 @@ def Tick():
 
 def SpeedrunGame(TwitchGameName):
     #TwitchGameName is Game according to Twitch
+    #Format for the return is [mainboard, category extension]
+    #If there is no category extension page, leave blank with "".
     if TwitchGameName == "Super Mario Odyssey":     #SMO Main board
-        return "smo"
+        return ["smo", "smoce"]
     elif TwitchGameName == "Super Mario 64":        #SM64 Main Board
-        return "sm64"
+        return ["sm64", "sm64memes"]
     elif TwitchGameName == "Celeste":               #Celeste Main Board
-        return "celeste"
+        return ["celeste", "celeste_category_extensions"]
     elif TwitchGameName == "Super Mario Sunshine":
-        return "sms"
+        return ["sms", "smsce"]
     elif TwitchGameName == "The Legend of Zelda: Breath of the Wild":
-        return "botw"
+        return ["botw", "botw-extension"]
     elif TwitchGameName == "Super Mario Bros.":
-        return "smb1"
+        return ["smb1", "smbce"]
     elif TwitchGameName == "Super Mario Bros.: The Lost Levels":
-        return "smbtll"
+        return ["smbtll", "smbtllce"]
     elif TwitchGameName == "Super Mario Bros. 2":
-        return "smb2"
+        return ["smb2", "smb2ce"]
     elif TwitchGameName == "Super Mario Bros. 3":
-        return "smb3"
+        return ["smb3", "smb3ce"]
     elif TwitchGameName == "Super Mario World":
-        return "smw"
+        return ["smw", "smwext"]
     elif TwitchGameName == "Super Mario Galaxy":
-        return "smg1"
+        return ["smg1", ""]
     elif TwitchGameName == "Super Mario Galaxy 2":
-        return "smg2"
+        return ["smg2", ""]
     elif TwitchGameName == "New Super Mario Bros.":
-        return "nsmb"
+        return ["nsmb", "nsmbce"]
     elif TwitchGameName == "New Super Mario Bros. 2":
-        return "nsmb2"
+        return ["nsmb2", "nsmb2memes"]
     elif TwitchGameName == "New Super Mario Bros. U":
-        return "nsmbu"
+        return ["nsmbu", ""]
     elif TwitchGameName == "New Super Mario Bros. Wii":
-        return "nsmbw"
+        return ["nsmbw", "nsmbwce"]
     elif TwitchGameName == "Super Mario 3D World":
-        return "sm3dw"
+        return ["sm3dw", ""]
     elif TwitchGameName == "Yu-Gi-Oh! Forbidden Memories":
-        return "yugiohfm"
+        return ["yugiohfm", "yugiohfmextensions"]
         
-
-def CategoryExtensions(TwitchGameName):
-    #TwitchGameName is the Game according to Twitch
-    if TwitchGameName == "Super Mario Odyssey":     #SMO Category Extensions
-        return "smoce"
-    elif TwitchGameName == "Super Mario 64":        #SM64 Category Extensions
-        return "sm64memes"
-    elif TwitchGameName == "Celeste":               #Celeste Category Extensions
-        return "celeste_category_extensions"
-    elif TwitchGameName == "Super Mario Sunshine":
-        return "smsce"
-    elif TwitchGameName == "The Legend of Zelda: Breath of the Wild":
-        return "botw-extension"
-    elif TwitchGameName == "Super Mario Bros.":
-        return "smbce"
-    elif TwitchGameName == "Super Mario Bros.: The Lost Levels":
-        return "smbtllce"
-    elif TwitchGameName == "Super Mario Bros. 2":
-        return "smb2ce"
-    elif TwitchGameName == "Super Mario Bros. 3":
-        return "smb3ce"
-    elif TwitchGameName == "Super Mario World":
-        return "smwext"
-    elif TwitchGameName == "New Super Mario Bros.":
-        return "nsmbce"
-    elif TwitchGameName == "New Super Mario Bros. 2":
-        return "nsmb2memes"
-    elif TwitchGameName == "New Super Mario Bros. Wii":
-        return "nsmbwce"
-    elif TwitchGameName == "Super Mario 3D World":
-        return "sm3dw"
-    elif TwitchGameName == "Yu-Gi-Oh! Forbidden Memories":
-        return "yugiohfmextensions"
 
 def getRunnerName(speedrunner_id):
     #Get the runners ID from speedrun.com to query the speedrun API less.
@@ -183,26 +149,28 @@ def getCategories(game, TwitchTitle):
     #Debating returning the blob
     categories = {}     # Category : Records Page
     Parent.Log("!wr", "Getting list of category names from speedrun.com.")
-    CategoryPage = Parent.GetRequest("https://speedrun.com/api/v1/games/{}/categories".format(game), {})
-    CategoryPage = json.loads(CategoryPage)
-    if CategoryPage['status'] == 200:
-        CategoryPage = json.loads(CategoryPage['response'])
-        TwitchTitleUpper = TwitchTitle.upper()
-        for each in CategoryPage['data']:
-            Parent.Log("!wr", "checking for {} in Title.".format(each['name']))
-            if each['name'].upper() in TwitchTitleUpper:
-                for link in each['links']:
-                    if link['rel'] == "records":
-                        categories[each['name']] = link['uri']
+    for each in game:
+        CategoryPage = Parent.GetRequest("https://speedrun.com/api/v1/games/{}/categories".format(each), {})
+        CategoryPage = json.loads(CategoryPage)
+        if CategoryPage['status'] == 200:
+            CategoryPage = json.loads(CategoryPage['response'])
+            TwitchTitleUpper = TwitchTitle.upper()
+            for each in CategoryPage['data']:
+                Parent.Log("!wr", "checking for {} in Title.".format(each['name']))
+                if each['name'].upper() in TwitchTitleUpper:
+                    for link in each['links']:
+                        if link['rel'] == "records":
+                            categories[each['name']] = link['uri']
+        else:   #Failed to load the categories page for the game ('game' value does not point to a valid page)
+            Parent.Log("!wr", "{} has no categories page.".format(each))
+            return -2, -2
+    if categories:
         LongestMatch = max(categories.keys(),key=len)
         return categories[LongestMatch], LongestMatch
-            
-    else:   #Failed to load the categories page for the game
-        Parent.Log("!wr", "{} has no categories page.".format(game))
-        return -2, -2
-    #If we found no matching category in the title of the stream
-    Parent.Log("!wr", "Error pulling the categories for {}.".format(game))
-    return -5, -5
+    else:   
+        #If we found no matching category in the title of the stream
+        Parent.Log("!wr", "Error pulling the categories for {}.".format(game))
+        return -5, -5
     
 def getRuns(LeaderboardURL):
     #Pull the list of runs from the speedrun api
