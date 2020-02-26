@@ -60,6 +60,7 @@ def Execute(data):
             TimeString = TimeString[0:TimeString.index('.')+4] # Cut the time down to 3 decimal places at most
         send_message("The WR in {} {} is {} held by {}.".format(game, category, TimeString, runner_name))
         Parent.AddUserCooldown(ScriptName, commandName, data.User, userCooldown)
+        Parent.AddCooldown(ScriptName, commandName, cooldown)
 	return
 
 
