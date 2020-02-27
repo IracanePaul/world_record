@@ -13,8 +13,8 @@ Notes:
 '''
 
 commandName = "!wr"     #String to start the command
-cooldown = 1            #Cooldown of the command in seconds
-userCooldown = 1
+cooldown = 30           #Cooldown of the command in seconds
+userCooldown = 30
 
 import datetime         #For converting time from a number of seconds to a human readable format (1:23:45.67)
 import json             #For quickly / easily parsing data from speedrun.com/
@@ -71,7 +71,6 @@ def Tick():
 def SpeedrunGame(TwitchGameName):
     #TwitchGameName is Game according to Twitch
     #Format for the return is [mainboard, category extension]
-    #If there is no category extension page, leave blank with "".
     if TwitchGameName == "Super Mario Odyssey":     #SMO Main board
         return ["smo", "smoce"]
     elif TwitchGameName == "Super Mario 64":        #SM64 Main Board
@@ -158,7 +157,7 @@ def getCategories(game, TwitchTitle):
             TwitchTitleUpper = TwitchTitle.upper()
             for each in CategoryPage['data']:
                 Parent.Log("!wr", "checking for {} in Title.".format(each['name']))
-                if each['name'].upper() in TwitchTitleUpper:
+                if each['name'].upper() in TwitchTitleUpper and each['type'] == "per-game":
                     for link in each['links']:
                         if link['rel'] == "records":
                             categories[each['name']] = link['uri']
