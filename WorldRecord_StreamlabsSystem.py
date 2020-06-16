@@ -13,12 +13,11 @@ Notes:
 '''
 
 commandName = "!wr"     #String to start the command
-cooldown = 30           #Cooldown of the command in seconds
+cooldown = 2            #Cooldown of the command in seconds
 userCooldown = 30
 
 import datetime         #For converting time from a number of seconds to a human readable format (1:23:45.67)
 import json             #For quickly / easily parsing data from speedrun.com/
-
 
 headers = {'Client-ID': 'umyyc7qkoxedtjir8wo50iinz6qzs8'}  #No touchey
 
@@ -47,11 +46,11 @@ def Execute(data):
         runs = getRuns(url)
     
         WRrun = runs[0]['run'] #WR run
-        Parent.Log("!wr", str(WRrun))
-        Parent.Log("!wr", str(type(WRrun)))
+        #Parent.Log("!wr", str(WRrun))
+        #Parent.Log("!wr", str(type(WRrun)))
         runner_name = getRunnerName(WRrun['players'][0]['id'])
         Time = WRrun['times']['primary_t']
-        Parent.Log("!wr", str(type(Time)))
+        #Parent.Log("!wr", str(type(Time)))
         TimeParsed = datetime.timedelta(seconds=Time)
         TimeString = str(TimeParsed)
         while TimeString[0] == '0' or TimeString[0] == ':':
@@ -107,39 +106,39 @@ def SpeedrunGame(TwitchGameName):
         return ["sm3dw", ""]
     elif TwitchGameName == "Yu-Gi-Oh! Forbidden Memories":
         return ["yugiohfm", "yugiohfmextensions"]
-        
+    elif TwitchGameName == "Hello Kitty Kruisers with Sanrio Friends":
+        return ["hkk", ""]
 
 def getRunnerName(speedrunner_id):
     #Get the runners ID from speedrun.com to query the speedrun API less.
-    Parent.Log("!wr", "Pulling from speedrun.com/api/v1/users/{}".format(speedrunner_id))
+    #Parent.Log("!wr", "Pulling from speedrun.com/api/v1/users/{}".format(speedrunner_id))
     runnerPage = Parent.GetRequest("https://speedrun.com/api/v1/users/{}".format(speedrunner_id), {})
     runnerPage = json.loads(runnerPage)                     #Get speedrun.com data for user code
-    Parent.Log("!wr", "Runner Page: {}".format(runnerPage))
+    #Parent.Log("!wr", "Runner Page: {}".format(runnerPage))
     runnerPage = json.loads(runnerPage['response'])
     speedrunner_name = runnerPage['data']['names']['international']   #Grab international username for current WR holder
-    Parent.Log("!wr", "Runner Name is {}".format(speedrunner_name))
+    #Parent.Log("!wr", "Runner Name is {}".format(speedrunner_name))
     return speedrunner_name
 	
     
 def getGame():
-    #Pulls the json blob from twitch, and returns the Game (As a string), and the Title of the stream.
-    Parent.Log("!wr", "Connecting to Twitch API to pull the game you're playing.")
-    r = Parent.GetRequest("https://api.twitch.tv/helix/streams?user_login={}".format(Parent.GetChannelName()), headers)
-    rJson = json.loads(r)       #Parent.GetRequest pulls information back as a string, we're converting it to a json object
-    if rJson['status'] == 200:  # If successful response
-        Live = 1
-        GameJson = json.loads(rJson['response'])
-        #Parent.Log("!wr", "GameJson: {}".format(GameJson))
-        Game_Code = GameJson['data'][0]['game_id']
-        #Parent.Log("!wr", str(Game_Code))
-        #Twitch api stores games as an ID (######) we need a human readable game name
-        r = Parent.GetRequest("https://api.twitch.tv/helix/games?id={}".format(Game_Code), headers)
-        r = json.loads(json.loads(r)['response'])
-        game = r['data'][0]['name']
-        title = GameJson['data'][0]['title']
-        Parent.Log("!wr", "Title is : {}".format(title))
-        Parent.Log("!wr", "Game is {}".format(game))
-        return game, title
+    #Pulls the json blob from Decapi.me, and returns the Game (As a string), and the Title of the stream.
+    #Parent.Log("!wr", "Pulling stream information from decapi.me")
+    GameName = Parent.GetRequest("https://decapi.me/twitch/game/{}".format(Parent.GetChannelName()), headers)
+    GameName = json.loads(GameName) # Parent.GetRequest pulls information back as a string, we're converting it to a json object
+    if GameName['status'] == 200:  # If successful response
+        game = GameName['response']
+        title = Parent.GetRequest("https://decapi.me/twitch/title/{}".format(Parent.GetChannelName()), headers)
+        title = json.loads(title)
+        if title['status'] == 200:
+            title = title['response']
+            #Parent.Log("!wr", "Title is {}".format(title))
+            #Parent.Log("!wr", "Game is {}".format(game))
+            return game, title
+        else:
+            Parent.Log("!wr", "Issue pulling title from decapi.me")
+            return -5, -5
+    Parent.Log("!wr", "Issue pulling game from decapi.me")
     return -1, -1
 
 
@@ -148,7 +147,7 @@ def getCategories(game, TwitchTitle):
     #This functions returns a link to the leaderboard page, and the name of the category to print later...
     #Debating returning the blob
     categories = {}     # Category : Records Page
-    Parent.Log("!wr", "Getting list of category names from speedrun.com.")
+    #Parent.Log("!wr", "Getting list of category names from speedrun.com.")
     for each in game:
         CategoryPage = Parent.GetRequest("https://speedrun.com/api/v1/games/{}/categories".format(each), {})
         CategoryPage = json.loads(CategoryPage)
@@ -156,7 +155,7 @@ def getCategories(game, TwitchTitle):
             CategoryPage = json.loads(CategoryPage['response'])
             TwitchTitleUpper = TwitchTitle.upper()
             for each in CategoryPage['data']:
-                Parent.Log("!wr", "checking for {} in Title.".format(each['name']))
+                #Parent.Log("!wr", "checking for {} in Title.".format(each['name']))
                 if each['name'].upper() in TwitchTitleUpper and each['type'] == "per-game":
                     for link in each['links']:
                         if link['rel'] == "records":
@@ -176,7 +175,7 @@ def getRuns(LeaderboardURL):
     #Pull the list of runs from the speedrun api
     Leaderboard = Parent.GetRequest(LeaderboardURL, {})
     Leaderboard = json.loads(Leaderboard)
-    Parent.Log("!wr", str(Leaderboard))
+    #Parent.Log("!wr", str(Leaderboard))
     if Leaderboard['status'] != 200:
         Parent.Log("There was an issue getting the leaderboard {}.".format(LeaderboardURL))
         return "Blame speedrun.com for being broken. :)"
