@@ -2,7 +2,7 @@ ScriptName = "WR"
 Website = "https://speedrun.com/"
 Description = "Pulls the World Record for a Category when called with 'commandName Category'" #See Line 15
 Creator = "AuroTheAzure"
-Version = "1.1.1"
+Version = "1.1.2"
 
 ''' 
 Notes:
@@ -32,6 +32,7 @@ def Execute(data):
         return
     else:
         game, title = getGame()
+        #Parent.Log("!wr", "{} {}".format(game, title))
         if game == -1 and title == -1:
             send_message("There was an issue grabbing the game / title from Twitch.")
             return
@@ -70,6 +71,7 @@ def Tick():
 def SpeedrunGame(TwitchGameName):
     #TwitchGameName is Game according to Twitch
     #Format for the return is [mainboard, category extension]
+    #Parent.Log("!wr", "Game Name: {}".format(TwitchGameName))
     if TwitchGameName == "Super Mario Odyssey":     #SMO Main board
         return ["smo", "smoce"]
     elif TwitchGameName == "Super Mario 64":        #SM64 Main Board
@@ -91,23 +93,23 @@ def SpeedrunGame(TwitchGameName):
     elif TwitchGameName == "Super Mario World":
         return ["smw", "smwext"]
     elif TwitchGameName == "Super Mario Galaxy":
-        return ["smg1", ""]
+        return ["smg1", "smgce"]
     elif TwitchGameName == "Super Mario Galaxy 2":
-        return ["smg2", ""]
+        return ["smg2", "smg2"]
     elif TwitchGameName == "New Super Mario Bros.":
         return ["nsmb", "nsmbce"]
     elif TwitchGameName == "New Super Mario Bros. 2":
         return ["nsmb2", "nsmb2memes"]
     elif TwitchGameName == "New Super Mario Bros. U":
-        return ["nsmbu", ""]
+        return ["nsmbu", "nsmbu"]
     elif TwitchGameName == "New Super Mario Bros. Wii":
         return ["nsmbw", "nsmbwce"]
     elif TwitchGameName == "Super Mario 3D World":
-        return ["sm3dw", ""]
+        return ["sm3dw", "sm3dw"]
     elif TwitchGameName == "Yu-Gi-Oh! Forbidden Memories":
         return ["yugiohfm", "yugiohfmextensions"]
     elif TwitchGameName == "Hello Kitty Kruisers with Sanrio Friends":
-        return ["hkk", ""]
+        return ["hkk", "hkk"]
 
 def getRunnerName(speedrunner_id):
     #Get the runners ID from speedrun.com to query the speedrun API less.
@@ -147,10 +149,13 @@ def getCategories(game, TwitchTitle):
     #This functions returns a link to the leaderboard page, and the name of the category to print later...
     #Debating returning the blob
     categories = {}     # Category : Records Page
+    #Parent.Log("!wr", "Game: {}".format(game))
+    #Parent.Log("!wr", "TwitchTitle: {}".format(TwitchTitle))
     #Parent.Log("!wr", "Getting list of category names from speedrun.com.")
     for each in game:
         CategoryPage = Parent.GetRequest("https://speedrun.com/api/v1/games/{}/categories".format(each), {})
         CategoryPage = json.loads(CategoryPage)
+        #Parent.Log("!wr", "{}".format(CategoryPage['status']))
         if CategoryPage['status'] == 200:
             CategoryPage = json.loads(CategoryPage['response'])
             TwitchTitleUpper = TwitchTitle.upper()
