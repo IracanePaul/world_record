@@ -2,7 +2,7 @@ ScriptName = "WR"
 Website = "https://speedrun.com/"
 Description = "Pulls the World Record for a Category when called with 'commandName Category'" #See Line 15
 Creator = "AuroTheAzure"
-Version = "1.1.2"
+Version = "1.2.0"
 
 ''' 
 Notes:
@@ -46,7 +46,11 @@ def Execute(data):
             return
         runs = getRuns(url)
     
-        WRrun = runs[0]['run'] #WR run
+        try:
+            WRrun = runs[0]['run'] #WR run
+        except IndexError:
+            send_message("There is no verified WR for {} {}".format(game, category))
+            return
         #Parent.Log("!wr", str(WRrun))
         #Parent.Log("!wr", str(type(WRrun)))
         runner_name = getRunnerName(WRrun['players'][0]['id'])
@@ -58,7 +62,7 @@ def Execute(data):
             TimeString = TimeString[1::]
         if '.' in TimeString:
             TimeString = TimeString[0:TimeString.index('.')+4] # Cut the time down to 3 decimal places at most
-        send_message("The WR in {} {} is {} held by {}.".format(game, category, TimeString, runner_name))
+        send_message("The (Verified) WR in {} {} is {} held by {}.".format(game, category, TimeString, runner_name))
         Parent.AddUserCooldown(ScriptName, commandName, data.User, userCooldown)
         Parent.AddCooldown(ScriptName, commandName, cooldown)
 	return
@@ -72,44 +76,21 @@ def SpeedrunGame(TwitchGameName):
     #TwitchGameName is Game according to Twitch
     #Format for the return is [mainboard, category extension]
     #Parent.Log("!wr", "Game Name: {}".format(TwitchGameName))
-    if TwitchGameName == "Super Mario Odyssey":     #SMO Main board
-        return ["smo", "smoce"]
-    elif TwitchGameName == "Super Mario 64":        #SM64 Main Board
-        return ["sm64", "sm64memes"]
-    elif TwitchGameName == "Celeste":               #Celeste Main Board
-        return ["celeste", "celeste_category_extensions"]
-    elif TwitchGameName == "Super Mario Sunshine":
-        return ["sms", "smsce"]
-    elif TwitchGameName == "The Legend of Zelda: Breath of the Wild":
-        return ["botw", "botw-extension"]
-    elif TwitchGameName == "Super Mario Bros.":
-        return ["smb1", "smbce"]
-    elif TwitchGameName == "Super Mario Bros.: The Lost Levels":
-        return ["smbtll", "smbtllce"]
-    elif TwitchGameName == "Super Mario Bros. 2":
-        return ["smb2", "smb2ce"]
-    elif TwitchGameName == "Super Mario Bros. 3":
-        return ["smb3", "smb3ce"]
-    elif TwitchGameName == "Super Mario World":
-        return ["smw", "smwext"]
-    elif TwitchGameName == "Super Mario Galaxy":
-        return ["smg1", "smgce"]
-    elif TwitchGameName == "Super Mario Galaxy 2":
-        return ["smg2", "smg2"]
-    elif TwitchGameName == "New Super Mario Bros.":
-        return ["nsmb", "nsmbce"]
-    elif TwitchGameName == "New Super Mario Bros. 2":
-        return ["nsmb2", "nsmb2memes"]
-    elif TwitchGameName == "New Super Mario Bros. U":
-        return ["nsmbu", "nsmbu"]
-    elif TwitchGameName == "New Super Mario Bros. Wii":
-        return ["nsmbw", "nsmbwce"]
-    elif TwitchGameName == "Super Mario 3D World":
-        return ["sm3dw", "sm3dw"]
-    elif TwitchGameName == "Yu-Gi-Oh! Forbidden Memories":
-        return ["yugiohfm", "yugiohfmextensions"]
-    elif TwitchGameName == "Hello Kitty Kruisers with Sanrio Friends":
-        return ["hkk", "hkk"]
+    IdList = []
+    #Parent.Log("!wr", "Reaching out to speedrun.com")
+    SearchBlob = Parent.GetRequest("https://speedrun.com/api/v1/games?name={}".format(TwitchGameName), {})
+    #Parent.Log("!wr", SearchBlob)
+    SearchBlob = json.loads(SearchBlob)
+    #Parent.Log("!wr", str(SearchBlob['status']))
+    if SearchBlob['status'] == 200:
+        #Parent.Log("!wr", "Successful query.")
+        blob = json.loads(SearchBlob['response'])
+        for each in blob['data']:
+            if each['names']['twitch'] == TwitchGameName:
+                Parent.Log("!wr", "Found match: {}".format(each['id']))
+                if not each['romhack']:
+                    IdList.append(each['id'])
+    return IdList
 
 def getRunnerName(speedrunner_id):
     #Get the runners ID from speedrun.com to query the speedrun API less.
