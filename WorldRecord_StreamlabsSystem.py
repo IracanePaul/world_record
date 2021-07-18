@@ -38,6 +38,7 @@ def Execute(data):
             return
         gameURL = SpeedrunGame(game)
         url, category = getCategories(gameURL, title)
+        #Parent.Log("Test", str(category))
         if url == -5 and category == -5:            # This means the category wasn't found in the twitch title
             send_message("I couldn't find any categories in the stream title.")
             return
@@ -87,9 +88,13 @@ def SpeedrunGame(TwitchGameName):
         blob = json.loads(SearchBlob['response'])
         for each in blob['data']:
             if each['names']['twitch'] == TwitchGameName:
-                Parent.Log("!wr", "Found match: {}".format(each['id']))
-                if not each['romhack']:
+                #Parent.Log("!wr", "Found match: {}".format(each['id']))
+                #Parent.Log(" -- ", (TwitchGameName + " Category Extensions"))
+                #Parent.Log(" -+- ", each['names']['international'])
+                if (not each['romhack']) or "Category Extensions" in each['names']['international']:
                     IdList.append(each['id'])
+    #for each in IdList:
+    #    Parent.Log("???", each)  //Believe me, you don't want this.
     return IdList
 
 def getRunnerName(speedrunner_id):
@@ -130,10 +135,11 @@ def getCategories(game, TwitchTitle):
     #This functions returns a link to the leaderboard page, and the name of the category to print later...
     #Debating returning the blob
     categories = {}     # Category : Records Page
-    #Parent.Log("!wr", "Game: {}".format(game))
-    #Parent.Log("!wr", "TwitchTitle: {}".format(TwitchTitle))
-    #Parent.Log("!wr", "Getting list of category names from speedrun.com.")
+    Parent.Log("!wr", "Game: {}".format(game))
+    Parent.Log("!wr", "TwitchTitle: {}".format(TwitchTitle))
+    Parent.Log("!wr", "Getting list of category names from speedrun.com.")
     for each in game:
+        Parent.Log("!wr", each)
         CategoryPage = Parent.GetRequest("https://speedrun.com/api/v1/games/{}/categories".format(each), {})
         CategoryPage = json.loads(CategoryPage)
         #Parent.Log("!wr", "{}".format(CategoryPage['status']))
@@ -144,19 +150,45 @@ def getCategories(game, TwitchTitle):
                 #Parent.Log("!wr", "checking for {} in Title.".format(each['name']))
                 if each['name'].upper() in TwitchTitleUpper and each['type'] == "per-game":
                     for link in each['links']:
-                        if link['rel'] == "records":
-                            categories[each['name']] = link['uri']
+                        if link['rel'] == "leaderboard":
+                            categories[each['name']] = [link['uri'], each['id']]
         else:   #Failed to load the categories page for the game ('game' value does not point to a valid page)
             Parent.Log("!wr", "{} has no categories page.".format(each))
             return -2, -2
     if categories:
         LongestMatch = max(categories.keys(),key=len)
-        return categories[LongestMatch], LongestMatch
+        #Parent.Log("!wr", "{} {}".format(categories[LongestMatch][0], LongestMatch))
+        #Add variables to search for to the url
+        #categories[LongestMatch][0] += getVariables(categories[LongestMatch][1], TwitchTitle)
+        #Parent.Log("+++", categories[LongestMatch][0])
+        #Parent.Log("!wr", categories[LongestMatch][0])
+        return categories[LongestMatch][0], LongestMatch
     else:   
         #If we found no matching category in the title of the stream
         Parent.Log("!wr", "Error pulling the categories for {}.".format(game))
         return -5, -5
-    
+
+
+def getVariables(categoryID, TwitchTitle):
+    # The goal:  Check twitch title for any potential variables (tabs on the leaderboard under individual categories)
+    #Parent.Log("!wr", "{} {}".format(str(categoryID), TwitchTitle))
+    variables = ""
+    data = Parent.GetRequest("https://speedrun.com/api/v1/categories/{}/variables".format(categoryID), {})
+    data = json.loads(data)
+    if data['status'] == 200:
+        data = json.loads(data['response'])
+        for each in data['data']:
+            #Parent.Log("!each", str(each))
+            for var in each['values']['values']:
+                if each['values']['values'][var]['label'].upper() in TwitchTitle.upper():
+                    variables+=("var-{}={}&".format(each['id'],var))
+    #Parent.Log("---", variables)
+    if variables:
+        return "?" + variables[:-1]
+    else:
+        return variables
+
+
 def getRuns(LeaderboardURL):
     #Pull the list of runs from the speedrun api
     Leaderboard = Parent.GetRequest(LeaderboardURL, {})
@@ -166,7 +198,7 @@ def getRuns(LeaderboardURL):
         Parent.Log("There was an issue getting the leaderboard {}.".format(LeaderboardURL))
         return "Blame speedrun.com for being broken. :)"
     Leaderboard = json.loads(Leaderboard['response'])
-    return Leaderboard['data'][0]['runs']
+    return Leaderboard['data']['runs']
 
 def send_message(message):
     Parent.SendStreamMessage(message)
